@@ -705,7 +705,7 @@ function ScrollImageSequence({
   useEffect(() => {
     if (!isSectionActive) return
 
-    const intervalMs = 1800
+    const intervalMs = 2200
     const timer = window.setInterval(() => {
       const nextIdx = frameIdxRef.current >= frames.length - 1 ? 0 : frameIdxRef.current + 1
       goToFrame(nextIdx)

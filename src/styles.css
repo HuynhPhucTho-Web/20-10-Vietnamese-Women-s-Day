@@ -350,6 +350,8 @@ main {
   white-space: nowrap;
   min-width: 0;
   max-width: 100%;
+  transform: translateZ(0);
+  backface-visibility: hidden;
   transition: all var(--transition-fast);
   text-decoration: none;
   box-shadow: var(--shadow-sm);
@@ -1614,7 +1616,14 @@ main {
 
 /* ===================================================
    RESPONSIVE MEDIA QUERIES
-   =================================================== */
+   =================================================== */@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 @media (max-width: 1024px) {
   .hero {
     grid-template-columns: 1fr;
@@ -1886,6 +1895,8 @@ main {
   overflow: hidden;
   width: 100%;
   box-sizing: border-box;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .scrolly-card::before {
