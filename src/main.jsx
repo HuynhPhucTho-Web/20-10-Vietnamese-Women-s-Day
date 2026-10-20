@@ -599,7 +599,7 @@ function ScrollImageSequence({
   const frameIdxRef = useRef(0)
   const [frameIdx, setFrameIdx] = useState(0)
   const [canvasReady, setCanvasReady] = useState(false)
-  const deltaAccumulatorRef = useRef(0)
+  const [isSectionActive, setIsSectionActive] = useState(false)
 
   // Draw current frame to canvas cleanly without any flicker
   const drawFrame = useCallback((idx) => {
@@ -682,58 +682,37 @@ function ScrollImageSequence({
     }
   }, [frames, drawFrame])
 
-  // Wheel lock: hold user on this section while cycling through all 9 frames
+  // Auto-play the sequence when the story section is in view, without blocking page scroll.
   useEffect(() => {
     const section = sectionRef.current
     if (!section) return
 
-    const WHEEL_THRESHOLD = 70 // wheel delta required to advance 1 frame
-
-    const handleWheel = (e) => {
-      const rect = section.getBoundingClientRect()
-      // Active when section top is at or past viewport top, and section hasn't scrolled past bottom
-      const isPinnedInView = rect.top <= 20 && rect.bottom >= window.innerHeight - 20
-
-      if (!isPinnedInView) return
-
-      // Once the final frame is reached, let the browser scroll normally to the next section.
-      if (frameIdxRef.current >= frames.length - 1 && e.deltaY > 0) {
-        return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        setIsSectionActive(entry && entry.isIntersecting)
+      },
+      {
+        threshold: [0.2, 0.6],
+        rootMargin: '0px 0px -10% 0px',
       }
+    )
 
-      // Scrolling DOWN
-      if (e.deltaY > 0) {
-        if (frameIdxRef.current < frames.length - 1) {
-          // Still have frames to show -> prevent page scrolling down!
-          e.preventDefault()
-          deltaAccumulatorRef.current += e.deltaY
-          if (deltaAccumulatorRef.current >= WHEEL_THRESHOLD) {
-            deltaAccumulatorRef.current = 0
-            goToFrame(frameIdxRef.current + 1)
-          }
-        }
-      }
-      // Scrolling UP
-      else if (e.deltaY < 0) {
-        if (frameIdxRef.current > 0) {
-          // Still in sequence -> prevent page scrolling up!
-          e.preventDefault()
-          deltaAccumulatorRef.current += e.deltaY
-          if (deltaAccumulatorRef.current <= -WHEEL_THRESHOLD) {
-            deltaAccumulatorRef.current = 0
-            goToFrame(frameIdxRef.current - 1)
-          }
-        }
-        // If frameIdxRef.current === 0, allow scrolling back up to hero!
-      }
-    }
+    observer.observe(section)
+    return () => observer.disconnect()
+  }, [])
 
-    window.addEventListener('wheel', handleWheel, { passive: false })
-    return () => window.removeEventListener('wheel', handleWheel)
-  }, [frames.length, goToFrame])
+  useEffect(() => {
+    if (!isSectionActive) return
 
-  // Keep the sequence under wheel control only. The global scroll-sync backup was
-  // causing the last-frame jump to overshoot and skip ahead unexpectedly.
+    const intervalMs = 1800
+    const timer = window.setInterval(() => {
+      const nextIdx = frameIdxRef.current >= frames.length - 1 ? 0 : frameIdxRef.current + 1
+      goToFrame(nextIdx)
+    }, intervalMs)
+
+    return () => window.clearInterval(timer)
+  }, [frames.length, goToFrame, isSectionActive])
 
   const handleSelectChapter = (chapIdx) => {
     onChapterChange(chapIdx)
@@ -755,7 +734,7 @@ function ScrollImageSequence({
             <em>Nhật Ký Đóa Hoa Tỏa Sắc</em>
           </h2>
           <p className="section-subtitle">
-            Cuộn chuột để chiêm ngưỡng trọn vẹn 9 khoảnh khắc rạng ngời (khung hình tự khóa cho đến khi xem hết).
+            Tự động chuyển từng khung hình khi bạn lướt tới đây, giữ trải nghiệm mượt mà và hiệu quả hơn.
           </p>
         </div>
 
@@ -856,7 +835,7 @@ function ScrollImageSequence({
               {/* Status indicator */}
               <div className="scrolly-scroll-indicator">
                 <ArrowDown size={15} className="scroll-arrow-anim" />
-                <span>Cuộn chuột ({frameIdx + 1}/{frames.length})</span>
+                <span>Tự động ({frameIdx + 1}/{frames.length})</span>
               </div>
 
               <button
